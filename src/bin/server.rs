@@ -16,6 +16,11 @@ use curve25519_dalek::{
     ristretto::RistrettoPoint,
 };
 
+use rand::{
+    seq::SliceRandom,
+    thread_rng,
+};
+
 fn server_protocol(set_size: usize, channel: &mut TrackChannel<SymChannel<TcpStream>>){
     // generate input set for P2, with intersectionsize amount of duplicate points as
     let time = SystemTime::now();
@@ -23,11 +28,14 @@ fn server_protocol(set_size: usize, channel: &mut TrackChannel<SymChannel<TcpStr
     let mut read_total = 0.0;
     let mut write_total = 0.0;
 
-    let p2_input = util::generate_points(set_size);
+    let mut rng_shuffle = thread_rng();
+    let mut p2_input = util::generate_points(set_size);
+    p2_input.shuffle(&mut rng_shuffle);
+
     println!("server :: generated points in {:?} ms", time.elapsed().unwrap().as_millis());
 
-    let mut rng = AesRng::new();
-    let b: Scalar = Scalar::random(&mut rng);
+    let mut rng_scalar = AesRng::new();
+    let b: Scalar = Scalar::random(&mut rng_scalar);
 
     let time = SystemTime::now();
     let p2_input_b = util::cmult_vec(p2_input, b);
@@ -46,7 +54,9 @@ fn server_protocol(set_size: usize, channel: &mut TrackChannel<SymChannel<TcpStr
     read_total = read_total + channel.kilobits_read() / 1000.0;
 
     let time = SystemTime::now();
-    let p1_input_a = util::receive_pts(channel);
+    let mut p1_input_a = util::receive_pts(channel);
+    p1_input_a.shuffle(&mut rng_shuffle);
+
     println!("server :: received p1^a in {:?} ms", time.elapsed().unwrap().as_millis());
     println!("server :: communication received {:?} in Mb", channel.kilobits_read() / 1000.0);
     read_total = read_total + channel.kilobits_read() / 1000.0;

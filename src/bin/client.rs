@@ -15,13 +15,23 @@ use curve25519_dalek::{
     ristretto::RistrettoPoint,
 };
 
+use rand::{
+    seq::SliceRandom,
+    thread_rng,
+};
+
+
 fn client_protocol(set_size: usize, channel: &mut TrackChannel<SymChannel<TcpStream>>){
     let time = SystemTime::now();
     let time_total = SystemTime::now();
     let mut read_total = 0.0;
     let mut write_total = 0.0;
-    // generate input set for P1.
-    let p1_input = util::generate_points(set_size);
+
+    // generate input set for P1 and shuffle.
+    let mut rng_shuffle = thread_rng();
+    let mut p1_input = util::generate_points(set_size);
+    p1_input.shuffle(&mut rng_shuffle);
+
     println!("client :: generated points in {:?} ms", time.elapsed().unwrap().as_millis());
 
     // P1: generate random scalar a and calculate scalar multiplication for each point in p1_input
@@ -33,8 +43,9 @@ fn client_protocol(set_size: usize, channel: &mut TrackChannel<SymChannel<TcpStr
     println!("client :: computed p1^a {:?} ms", time.elapsed().unwrap().as_millis());
 
     let time = SystemTime::now();
-    // P1 reads points from P2
-    let p2_input_b = util::receive_pts(channel);
+    // P1 reads points from P2 and shuffles
+    let mut p2_input_b = util::receive_pts(channel);
+    p2_input_b.shuffle(&mut rng_shuffle);
     println!("client :: received p2^b in {:?} ms", time.elapsed().unwrap().as_millis());
     println!("client :: communication received {:?} in Mb", channel.kilobits_read() / 1000.0);
     read_total = read_total + channel.kilobits_read() / 1000.0;
