@@ -8,6 +8,7 @@ use scuttlebutt::{
 
 use std::{
     net::TcpListener,
+    net::TcpStream,
     time::SystemTime,
 };
 
@@ -16,7 +17,7 @@ use curve25519_dalek::{
     ristretto::RistrettoPoint,
 };
 
-fn server_protocol<C: AbstractChannel>(set_size: usize, channel: &mut C){
+fn server_protocol(set_size: usize, channel: &mut TrackChannel<SymChannel<TcpStream>>){
     // generate input set for P2, with intersectionsize amount of duplicate points as
     let time = SystemTime::now();
     let p2_input = util::generate_points(set_size);
@@ -32,14 +33,17 @@ fn server_protocol<C: AbstractChannel>(set_size: usize, channel: &mut C){
     let time = SystemTime::now();
     util::send_pts(p2_input_b, channel);
     println!("server :: sent p2^b in {:?} ms", time.elapsed().unwrap().as_millis());
+    println!("server :: communication sent {:?} in Mb", channel.kilobits_written() / 1000.0);
 
     let time = SystemTime::now();
     let p2_input_ab: Vec<RistrettoPoint> = util::receive_pts(channel);
     println!("server :: received p2^ab in {:?} ms", time.elapsed().unwrap().as_millis());
+    println!("server :: communication received {:?} in Mb", channel.kilobits_read() / 1000.0);
 
     let time = SystemTime::now();
     let p1_input_a = util::receive_pts(channel);
     println!("server :: received p1^a in {:?} ms", time.elapsed().unwrap().as_millis());
+    println!("server :: communication received {:?} in Mb", channel.kilobits_read() / 1000.0);
 
     let time = SystemTime::now();
     let p1_input_ab: Vec<RistrettoPoint>  = util::cmult_vec(p1_input_a, b);
@@ -48,6 +52,7 @@ fn server_protocol<C: AbstractChannel>(set_size: usize, channel: &mut C){
     let time = SystemTime::now();
     util::send_pts(p1_input_ab.clone(), channel);
     println!("server :: sent p1^ab in {:?} ms", time.elapsed().unwrap().as_millis());
+    println!("server :: communication sent {:?} in Mb", channel.kilobits_written() / 1000.0);
 
     let time = SystemTime::now();
     let intersection_size = util::intersect_size(p1_input_ab, p2_input_ab);
