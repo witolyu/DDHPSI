@@ -3,7 +3,6 @@ use scuttlebutt::{
     AesRng,
     TrackChannel,
     SymChannel,
-    channel::AbstractChannel,
 };
 
 use std::{
