@@ -19,6 +19,10 @@ use curve25519_dalek::{
 fn server_protocol(set_size: usize, channel: &mut TrackChannel<SymChannel<TcpStream>>){
     // generate input set for P2, with intersectionsize amount of duplicate points as
     let time = SystemTime::now();
+    let time_total = SystemTime::now();
+    let mut read_total = 0.0;
+    let mut write_total = 0.0;
+
     let p2_input = util::generate_points(set_size);
     println!("server :: generated points in {:?} ms", time.elapsed().unwrap().as_millis());
 
@@ -33,16 +37,19 @@ fn server_protocol(set_size: usize, channel: &mut TrackChannel<SymChannel<TcpStr
     util::send_pts(p2_input_b, channel);
     println!("server :: sent p2^b in {:?} ms", time.elapsed().unwrap().as_millis());
     println!("server :: communication sent {:?} in Mb", channel.kilobits_written() / 1000.0);
+    write_total = write_total + channel.kilobits_written() / 1000.0;
 
     let time = SystemTime::now();
     let p2_input_ab: Vec<RistrettoPoint> = util::receive_pts(channel);
     println!("server :: received p2^ab in {:?} ms", time.elapsed().unwrap().as_millis());
     println!("server :: communication received {:?} in Mb", channel.kilobits_read() / 1000.0);
+    read_total = read_total + channel.kilobits_read() / 1000.0;
 
     let time = SystemTime::now();
     let p1_input_a = util::receive_pts(channel);
     println!("server :: received p1^a in {:?} ms", time.elapsed().unwrap().as_millis());
     println!("server :: communication received {:?} in Mb", channel.kilobits_read() / 1000.0);
+    read_total = read_total + channel.kilobits_read() / 1000.0;
 
     let time = SystemTime::now();
     let p1_input_ab: Vec<RistrettoPoint>  = util::cmult_vec(p1_input_a, b);
@@ -52,13 +59,18 @@ fn server_protocol(set_size: usize, channel: &mut TrackChannel<SymChannel<TcpStr
     util::send_pts(p1_input_ab.clone(), channel);
     println!("server :: sent p1^ab in {:?} ms", time.elapsed().unwrap().as_millis());
     println!("server :: communication sent {:?} in Mb", channel.kilobits_written() / 1000.0);
+    write_total = write_total + channel.kilobits_written() / 1000.0;
 
     let time = SystemTime::now();
     let intersection_size = util::intersect_size(p1_input_ab, p2_input_ab);
     println!("server :: computed intersection in {:?} ms", time.elapsed().unwrap().as_millis());
-    println!("RESULT :: server :: intersection_size: {:?}", intersection_size);
 
-
+    println!("*************************************");
+    println!("RESULT :: server :: intersection_size: {:?} items", intersection_size);
+    println!("TOTAL COMMUNICATION READ :: server :: intersection_size: {:?} Mb", read_total);
+    println!("TOTAL COMMUNICATION WRITE :: server :: {:?} Mb", write_total);
+    println!("TOTAL TIME :: server :: {:?} ms", time_total.elapsed().unwrap().as_millis());
+    println!("*************************************");
 
 }
 
